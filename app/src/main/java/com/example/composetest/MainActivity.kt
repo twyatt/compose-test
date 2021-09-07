@@ -9,9 +9,7 @@ import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.composetest.ui.theme.ComposeTestTheme
 
@@ -22,7 +20,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: MainViewModel = viewModel()
 
-            val launcher = statefulLauncher(viewModel::fetch)
+            val launcher = statefulLauncher(key = "fetch", viewModel::fetch)
 
             ComposeTestTheme {
                 // A surface container using the 'background' color from the theme
@@ -30,33 +28,19 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background
                 ) {
-                    Greeting("Android")
-                }
 
-                Column {
-                    Text(text = "isRunning: ${launcher.isRunning}")
+                    Column {
+                        Text(text = "isRunning: ${launcher.isRunning}")
 
-                    Button(
-                        enabled = !launcher.isRunning.value,
-                        onClick = { launcher() }
-                    ) {
-                        Text(text = "Fetch!")
+                        Button(
+                            enabled = !launcher.isRunning.value,
+                            onClick = { launcher() }
+                        ) {
+                            Text(text = "Fetch!")
+                        }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String) {
-    Text(text = "Hello $name!")
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    ComposeTestTheme {
-        Greeting("Android")
     }
 }

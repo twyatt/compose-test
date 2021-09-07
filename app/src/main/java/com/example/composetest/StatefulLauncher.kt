@@ -8,17 +8,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import java.util.WeakHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 
+class StatefulLauncherViewModel : ViewModel() {
+    private val state: WeakHashMap<Any, MutableStateFlow<Int>> = WeakHashMap()
+
+    fun get(key: Any): MutableStateFlow<Int> = synchronized(this) {
+        state.getOrPut(key) { MutableStateFlow(0) }
+    }
+}
+
 class StatefulLauncher internal constructor(
     private val action: () -> Unit,
     val isRunning: State<Boolean>,
 ) {
-    operator fun invoke() { action() }
+    operator fun invoke() {
+        action()
+    }
 }
 
 /**
@@ -28,8 +41,9 @@ class StatefulLauncher internal constructor(
  */
 @Composable
 fun statefulLauncher(
+    key: Any,
     action: suspend () -> Unit,
-): StatefulLauncher = viewModelScope().statefulLauncher(action)
+): StatefulLauncher = viewModelScope().statefulLauncher(key, action)
 
 /**
  * Wraps a suspend lambda with a non-suspending lambda that [launch]es in a [viewModelScope] upon the returned
@@ -44,7 +58,8 @@ fun statefulLauncher(
  * @returns [StatefulLauncher] action that can be invoked to launch, and queried for its run state.
  */
 @Composable
-fun (suspend () -> Unit).withStatefulLauncher(): StatefulLauncher = viewModelScope().statefulLauncher(this)
+fun (suspend () -> Unit).withStatefulLauncher(key: Any): StatefulLauncher =
+    viewModelScope().statefulLauncher(key, this)
 
 /**
  * Wraps the suspend [action] in a [lazy coroutine][StatefulLauncher] that is a child of the receiver [CoroutineScope] and is
@@ -60,10 +75,12 @@ fun (suspend () -> Unit).withStatefulLauncher(): StatefulLauncher = viewModelSco
  */
 @Composable
 fun CoroutineScope.statefulLauncher(
+    key: Any,
     action: suspend () -> Unit
 ): StatefulLauncher {
-    val count = remember { MutableStateFlow(0) }
-    val isRunning = count.map { it > 0 }.collectAsState(initial = false)
+    val viewModel = viewModel<StatefulLauncherViewModel>()
+    val count = remember(key) { viewModel.get(key) }
+    val isRunning = remember { count.map { it > 0 } }.collectAsState(initial = false)
     val block: () -> Unit = {
         count.increment().also { println("count: $it") }
         launch { action() }
